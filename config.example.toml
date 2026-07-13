@@ -1,0 +1,13 @@
+# Copy to /etc/mavlink-nmea-bridge/config.toml and adjust as needed.
+mavlink_endpoint = "/dev/ttyACM0"
+baud = 115200
+position_source = "GPS_RAW_INT"
+bind_address = "0.0.0.0"
+tcp_port = 10110
+output_rate = 1.0
+message_rate = 5.0
+valid_age = 2.0
+stale_age = 5.0
+invalid_age = 5.0
+log_level = "INFO"
+

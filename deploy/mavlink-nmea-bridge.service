@@ -1,0 +1,24 @@
+[Unit]
+Description=ArduPilot MAVLink to NMEA TCP bridge
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=mavlink-bridge
+Group=mavlink-bridge
+SupplementaryGroups=dialout
+WorkingDirectory=/opt/mavlink-nmea-bridge
+EnvironmentFile=-/etc/default/mavlink-nmea-bridge
+ExecStart=/opt/mavlink-nmea-bridge/.venv/bin/python -m mavlink_nmea_bridge --config /etc/mavlink-nmea-bridge/config.toml
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/run
+
+[Install]
+WantedBy=multi-user.target
+
