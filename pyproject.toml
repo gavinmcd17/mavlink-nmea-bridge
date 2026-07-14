@@ -7,7 +7,10 @@ name = "mavlink-nmea-bridge"
 version = "0.1.0"
 description = "Bridge ArduPilot MAVLink GPS data to NMEA over TCP"
 requires-python = ">=3.12"
-dependencies = ["pymavlink>=2.4.40"]
+dependencies = [
+    "pymavlink>=2.4.40",
+    "pyserial>=3.5",
+]
 
 [project.optional-dependencies]
 test = ["pytest>=8.0"]
@@ -23,4 +26,3 @@ python_version = "3.12"
 check_untyped_defs = true
 disallow_untyped_defs = true
 no_implicit_optional = true
-

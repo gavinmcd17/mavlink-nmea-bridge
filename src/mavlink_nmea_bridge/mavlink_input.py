@@ -14,6 +14,7 @@ from .state import GPSState, GPSStateStore, system_utc
 LOG = logging.getLogger(__name__)
 UNKNOWN_U16 = 65535
 UNKNOWN_I32 = 2147483647
+UNKNOWN_GPS_EPH = (UNKNOWN_U16, 9999)
 
 
 def _number(value: Any, *, unknown: tuple[int, ...] = ()) -> float | None:
@@ -62,18 +63,32 @@ class MAVLinkReader:
                 (self.source_component is None or msg.get_srcComponent() == self.source_component))
 
     def _request_rate(self, connection: Any, name: str) -> None:
-        message_id = getattr(connection.mav, name, None)
-        # pymavlink exposes message constants on mavlink, not on every mav object.
         from pymavlink import mavutil
-        message_id = getattr(mavutil.mavlink, name, message_id)
+
+        # pymavlink exposes message IDs as MAVLINK_MSG_ID_<NAME>; they are not
+        # attributes named after the message itself on either object.
+        message_id = getattr(mavutil.mavlink, f"MAVLINK_MSG_ID_{name}", None)
         if message_id is not None:
             connection.mav.command_long_send(connection.target_system, connection.target_component,
                 mavutil.mavlink.MAV_CMD_SET_MESSAGE_INTERVAL, 0, message_id,
                 1_000_000.0 / self.message_rate, 0, 0, 0, 0, 0)
+        else:
+            LOG.warning("pymavlink has no message ID for %s; cannot request its rate", name)
 
     def _handle_gps(self, msg: Any) -> None:
         lat = _number(msg.lat, unknown=(UNKNOWN_I32,))
         lon = _number(msg.lon, unknown=(UNKNOWN_I32,))
+        fix_type = int(getattr(msg, "fix_type", 0) or 0)
+        satellites = _number(getattr(msg, "satellites_visible", None), unknown=(UNKNOWN_U16,))
+        eph = _number(getattr(msg, "eph", None), unknown=UNKNOWN_GPS_EPH)
+        LOG.info(
+            "GPS_RAW_INT received: lat=%s lon=%s fix_type=%s satellites=%s hdop=%s",
+            None if lat is None else lat / 1e7,
+            None if lon is None else lon / 1e7,
+            fix_type,
+            None if satellites is None else int(satellites),
+            None if eph is None else eph / 100.0,
+        )
         if lat is None or lon is None:
             return
         utc = _utc_from_gps(getattr(msg, "time_usec", None))
@@ -82,13 +97,12 @@ class MAVLinkReader:
             if self.on_system_time_fallback:
                 self.on_system_time_fallback()
         altitude = _number(msg.alt, unknown=(UNKNOWN_I32,))
-        eph = _number(getattr(msg, "eph", None), unknown=(UNKNOWN_U16,))
         velocity = _number(getattr(msg, "vel", None), unknown=(UNKNOWN_U16,))
         course = _number(getattr(msg, "cog", None), unknown=(UNKNOWN_U16,))
         s = GPSState(latitude=lat / 1e7, longitude=lon / 1e7,
             altitude_m=altitude / 1000.0 if altitude is not None else None,
-            fix_type=int(getattr(msg, "fix_type", 0) or 0),
-            satellites=int(getattr(msg, "satellites_visible", 0)) if _number(getattr(msg, "satellites_visible", None), unknown=(UNKNOWN_U16,)) is not None else None,
+            fix_type=fix_type,
+            satellites=int(satellites) if satellites is not None else None,
             hdop=eph / 100.0 if eph is not None else None,
             speed_mps=velocity / 100.0 if velocity is not None else None,
             course_deg=course / 100.0 if course is not None else None,
@@ -104,6 +118,15 @@ class MAVLinkReader:
     def _handle_global(self, msg: Any) -> None:
         lat, lon = _number(msg.lat, unknown=(UNKNOWN_I32,)), _number(msg.lon, unknown=(UNKNOWN_I32,))
         vx, vy = _number(msg.vx, unknown=(UNKNOWN_I32,)), _number(msg.vy, unknown=(UNKNOWN_I32,))
+        LOG.info(
+            "GLOBAL_POSITION_INT received: lat=%s lon=%s alt_mm=%s vx=%s vy=%s heading_cdeg=%s",
+            None if lat is None else lat / 1e7,
+            None if lon is None else lon / 1e7,
+            getattr(msg, "alt", None),
+            getattr(msg, "vx", None),
+            getattr(msg, "vy", None),
+            getattr(msg, "hdg", None),
+        )
         if lat is None or lon is None:
             return
         speed = math.hypot(vx, vy) / 100.0 if vx is not None and vy is not None else None
