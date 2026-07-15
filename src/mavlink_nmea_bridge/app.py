@@ -1,8 +1,11 @@
 """Application orchestration."""
+
 from __future__ import annotations
+
 import asyncio
 import logging
 import signal
+
 from .config import Config
 from .logging_config import configure_logging
 from .mavlink_input import MAVLinkReader
@@ -12,21 +15,27 @@ from .tcp_server import NMEAServer
 
 LOG = logging.getLogger(__name__)
 
+
 async def run(config: Config) -> None:
+    """Run the MAVLink reader and NMEA TCP server until shutdown."""
+
     configure_logging(config.log_level)
     LOG.info("Starting with configuration: %s", config)
     state = GPSStateStore(config.valid_age, config.stale_age, config.invalid_age)
     fallback_logged = False
+
     def system_time_warning() -> None:
         nonlocal fallback_logged
         if not fallback_logged:
             LOG.warning("MAVLink GPS UTC unavailable; using Linux system UTC clock")
             fallback_logged = True
+
     reader = MAVLinkReader(config.mavlink_endpoint, config.baud, config.position_source, state,
         config.message_rate, config.source_system, config.source_component, config.reconnect_max,
         system_time_warning)
     previous = Freshness.NEVER
     previous_fix: int | None = None
+
     def payload() -> bytes:
         nonlocal previous, previous_fix
         freshness = state.freshness()

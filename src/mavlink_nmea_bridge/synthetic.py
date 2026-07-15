@@ -1,13 +1,19 @@
 """Synthetic NMEA TCP server for BreadCrumb integration testing."""
+
 from __future__ import annotations
+
 import argparse
 import asyncio
 import time
+
 from .nmea import gga, vtg
 from .state import Freshness, GPSState
 from .tcp_server import NMEAServer
 
+
 async def run(args: argparse.Namespace) -> None:
+    """Run a TCP server that broadcasts a fixed synthetic GPS position."""
+
     state = GPSState(latitude=args.latitude, longitude=args.longitude, altitude_m=args.altitude,
         fix_type=args.fix_type, satellites=args.satellites, hdop=args.hdop, speed_mps=args.speed,
         course_deg=args.course, utc=None, source="synthetic", last_update_monotonic=time.monotonic())
@@ -15,7 +21,10 @@ async def run(args: argparse.Namespace) -> None:
         lambda: (gga(state, Freshness.VALID) + vtg(state, Freshness.VALID)).encode("ascii"))
     await server.run()
 
+
 def main() -> int:
+    """Parse command-line arguments and run the synthetic TCP server."""
+
     p = argparse.ArgumentParser()
     p.add_argument("--latitude", type=float, required=True)
     p.add_argument("--longitude", type=float, required=True)
@@ -37,6 +46,6 @@ def main() -> int:
         pass
     return 0
 
+
 if __name__ == "__main__":
     raise SystemExit(main())
-

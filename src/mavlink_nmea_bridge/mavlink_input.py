@@ -37,6 +37,8 @@ def _utc_from_gps(time_usec: Any) -> datetime | None:
 
 
 class MAVLinkReader:
+    """Read and normalize MAVLink position messages on a background thread."""
+
     def __init__(self, endpoint: str, baud: int, source: str, state: GPSStateStore,
                  message_rate: float, source_system: int | None = None,
                  source_component: int | None = None, reconnect_max: float = 30.0,
@@ -50,10 +52,14 @@ class MAVLinkReader:
         self._have_heartbeat = False
 
     def start(self) -> None:
+        """Start the background reader thread."""
+
         self._thread = threading.Thread(target=self.run, name="mavlink-reader", daemon=True)
         self._thread.start()
 
     def stop(self) -> None:
+        """Request reader shutdown and briefly wait for the thread to exit."""
+
         self._stop.set()
         if self._thread:
             self._thread.join(timeout=3)
@@ -143,6 +149,8 @@ class MAVLinkReader:
             system_id=msg.get_srcSystem(), component_id=msg.get_srcComponent()))
 
     def run(self) -> None:
+        """Run the reconnecting MAVLink receive loop until stopped."""
+
         from pymavlink import mavutil
         backoff = 1.0
         while not self._stop.is_set():

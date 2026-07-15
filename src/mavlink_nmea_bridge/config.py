@@ -12,6 +12,8 @@ from typing import Any
 
 @dataclass(frozen=True)
 class Config:
+    """Runtime settings for MAVLink input and NMEA TCP output."""
+
     mavlink_endpoint: str = "/dev/ttyACM0"
     baud: int = 115200
     position_source: str = "GPS_RAW_INT"
@@ -28,6 +30,8 @@ class Config:
     log_level: str = "INFO"
 
     def validate(self) -> None:
+        """Raise ``ValueError`` when any setting is outside its valid range."""
+
         if not self.mavlink_endpoint:
             raise ValueError("mavlink endpoint must not be empty")
         if self.baud <= 0:
@@ -63,6 +67,12 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def load_config(argv: list[str] | None = None) -> Config:
+    """Load, merge, and validate configuration-file and CLI settings.
+
+    Command-line values take precedence over values read from the optional
+    TOML configuration file.
+    """
+
     args = vars(_parser().parse_args(argv))
     config_path = args.pop("config")
     values: dict[str, Any] = {}
@@ -82,4 +92,3 @@ def load_config(argv: list[str] | None = None) -> Config:
     cfg = replace(Config(), **values)
     cfg.validate()
     return cfg
-

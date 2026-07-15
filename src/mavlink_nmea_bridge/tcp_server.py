@@ -11,6 +11,8 @@ LOG = logging.getLogger(__name__)
 
 
 class NMEAServer:
+    """Broadcast periodically generated NMEA payloads to all TCP clients."""
+
     def __init__(self, host: str, port: int, interval: float, payload: Callable[[], bytes]) -> None:
         self.host, self.port, self.interval, self.payload = host, port, interval, payload
         self._writers: set[asyncio.StreamWriter] = set()
@@ -34,6 +36,8 @@ class NMEAServer:
             LOG.info("TCP client disconnected: %s", peer)
 
     async def run(self) -> None:
+        """Serve clients and broadcast payloads until shutdown is requested."""
+
         try:
             self._server = await asyncio.start_server(self._client, self.host, self.port, reuse_address=True)
             LOG.info("NMEA TCP listening on %s:%s", self.host, self.port)
@@ -62,5 +66,6 @@ class NMEAServer:
             self._writers.clear()
 
     def stop(self) -> None:
-        self._stop.set()
+        """Request server shutdown."""
 
+        self._stop.set()
