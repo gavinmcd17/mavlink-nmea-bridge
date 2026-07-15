@@ -1,20 +1,8 @@
-# MAVLink to NMEA TCP bridge
+# MAVLink to NMEA TCP Bridge
 
-This service reads ArduPilot MAVLink GPS data and broadcasts NMEA-0183 over TCP
-to a Rajant BreadCrumb or another trusted client. It emits `$GPGGA` and
-`$GPVTG` once per output interval. The TCP listener is unauthenticated and
-unencrypted; bind it only to a trusted or isolated network.
+A simple service for reading ArduPilot MAVLink GPS data from USB and broadcasting NMEA-0183 over TCP to a Rajant BreadCrumb. It emits `$GPGGA` and `$GPVTG` once per output interval. The TCP listener is intentionally without authorization and encryption, given that BreadCrumbs do not support authentication with  TCP/IP server.
 
-The instructions below target a Raspberry Pi Compute Module 5 running 64-bit
-Ubuntu Server 24.04 LTS. The application is ordinary Linux Python software, so
-no Raspberry Pi-specific runtime is required. Confirm the image and Python
-architecture before starting:
-
-```bash
-uname -m                    # expected: aarch64
-dpkg --print-architecture   # expected: arm64
-python3 --version           # must be 3.12 or newer
-```
+This service has been created to target a Raspberry Pi Compute Module 5 running Ubuntu Server; however, it should work on any modern Linux distribution granted the listed dependencies are installed.
 
 ## How it works
 
@@ -33,31 +21,26 @@ By default, data is valid through 2 seconds, stale through 5 seconds, and
 invalid after 5 seconds. Invalid output has no fix, blank coordinates, and
 empty VTG motion fields.
 
-## Install on Ubuntu Server
+## Install
 
-Install the system packages needed to build Python dependencies, create a
-virtual environment, run tests, and diagnose networking:
-
-```bash
+Install all system packages needed to build Python dependencies, create virtual environments, run tests, and diagnose networking:
+``` shell
 sudo apt update
 sudo apt install -y git ca-certificates python3 python3-venv python3-pip \
   build-essential rsync netcat-openbsd iproute2 lsof
 ```
 
-Clone the repository and install it in an isolated environment:
-
-```bash
-git clone <repository-url> ~/mavlink-nmea-bridge
+After cloning the repository, install it within an isolated environment:
+``` shell
 cd ~/mavlink-nmea-bridge
 python3 -m venv .venv
-. .venv/bin/activate
+. .venv/bin/activate # activate virtual environment
 python -m pip install --upgrade pip
 python -m pip install -e '.[test]'
 ```
 
-Verify the installation before connecting the flight controller:
-
-```bash
+Verify installation:
+``` shell
 python -m pytest
 python -m mavlink_nmea_bridge --help
 ```
@@ -66,44 +49,31 @@ Reactivate the environment in a new shell with `. .venv/bin/activate`.
 
 ## Connect and configure MAVLink
 
-USB serial devices can change names after reconnects. Prefer the persistent
-device path shown under `/dev/serial/by-id/` rather than `/dev/ttyACM0`:
-
-```bash
+USB serial devices can change names after reconnects. Prefer the persistent device path shown under `/dev/serial/by-id/` rather than `/dev/ttyACM0`:
+``` shell
 ls -l /dev/serial/by-id/
 ls -l /dev/ttyACM* 2>/dev/null
 sudo usermod -aG dialout "$USER"
 ```
+Log out and back in after adding the group. Confirm the baud rate with the flight-controller documentation. MAVProxy, QGroundControl, and this bridge generally cannot all open the same serial device; use one owner and route MAVLink over UDP when sharing is needed.
 
-Log out and back in after adding the group. Confirm the baud rate with the
-flight-controller documentation. MAVProxy, QGroundControl, and this bridge
-generally cannot all open the same serial device; use one owner and route
-MAVLink over UDP when sharing is needed.
-
-Some Ubuntu images have ModemManager installed. It can probe a flight
-controller and interrupt or hold the serial device. Disable it only if this
-machine does not need cellular modem management:
-
-```bash
-systemctl is-active ModemManager 2>/dev/null || true
-sudo lsof /dev/ttyACM0 2>/dev/null || true
-sudo systemctl disable --now ModemManager.service
+Some Ubuntu images have ModemManager installed. It can probe a flight controller and interrupt or hold the serial device. Disable it only if this machine does not need cellular modem management:
+``` shell
+sudo usermod -a -G dialout $USER
+sudo apt-get remove modemmanager -y
+sudo apt install libfuse2 -y
+sudo apt install libxcb-xinerama0 libxkbcommon-x11-0 libxcb-cursor-dev -y
 ```
 
-If ModemManager is needed for another device, keep it enabled and configure a
-udev exclusion for the flight controller instead.
+If ModemManager is needed for another device, keep it enabled and configure a udev exclusion for the flight controller instead.
 
-Create a configuration file and change the endpoint, baud rate, and network
-settings as required:
-
-```bash
+Create a configuration file and change the endpoint, baud rate, and network settings as required:
+``` shell
 cp config.example.toml config.toml
 ${EDITOR:-vi} config.toml
 ```
 
-Command-line options override values from `--config`. The file
-`deploy/mavlink-nmea-bridge.env.example` only sets `PYTHONUNBUFFERED`; it is
-not the application configuration file.
+Command-line options override values from `--config`. The file `deploy/mavlink-nmea-bridge.env.example` only sets `PYTHONUNBUFFERED`; it is not the application configuration file.
 
 ## Run manually
 
