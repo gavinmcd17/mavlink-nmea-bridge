@@ -49,10 +49,10 @@ Reactivate the environment in a new shell with `. .venv/bin/activate`.
 
 ## Connect and configure MAVLink
 
-USB serial devices can change names after reconnects. Prefer the persistent device path shown under `/dev/serial/by-id/` rather than `/dev/ttyACM0`:
+Identify the USB serial device to use. Devices could change names if disconnected; therefore you should prefer the device path shown under `/dev/serial/by-id/` rather than `/dev/ttyACM0`:
 ``` shell
-ls -l /dev/serial/by-id/
-ls -l /dev/ttyACM* 2>/dev/null
+ls -l /dev/serial/by-id/ # use in production
+ls -l /dev/ttyACM* 2>/dev/null # only for testing
 sudo usermod -aG dialout "$USER"
 ```
 Log out and back in after adding the group. Confirm the baud rate with the flight-controller documentation. MAVProxy, QGroundControl, and this bridge generally cannot all open the same serial device; use one owner and route MAVLink over UDP when sharing is needed.
@@ -156,23 +156,35 @@ repository root, install a restricted service account and copy the checkout:
 ```bash
 sudo useradd --system --home /opt/mavlink-nmea-bridge \
   --shell /usr/sbin/nologin mavlink-bridge
+
 sudo usermod -aG dialout mavlink-bridge
+
 sudo install -d -o mavlink-bridge -g mavlink-bridge /opt/mavlink-nmea-bridge
+
 sudo rsync -a --exclude='.venv' --exclude='__pycache__' ./ \
   /opt/mavlink-nmea-bridge/
+
 sudo chown -R mavlink-bridge:mavlink-bridge /opt/mavlink-nmea-bridge
+
 sudo -u mavlink-bridge python3 -m venv /opt/mavlink-nmea-bridge/.venv
+
 sudo -u mavlink-bridge /opt/mavlink-nmea-bridge/.venv/bin/python \
   -m pip install --upgrade pip
+
 sudo -u mavlink-bridge /opt/mavlink-nmea-bridge/.venv/bin/python \
   -m pip install /opt/mavlink-nmea-bridge
+
 sudo install -d -o root -g mavlink-bridge -m 0750 \
   /etc/mavlink-nmea-bridge
+
 sudo install -o root -g mavlink-bridge -m 0640 config.example.toml \
   /etc/mavlink-nmea-bridge/config.toml
+
 sudoedit /etc/mavlink-nmea-bridge/config.toml
+
 sudo install -o root -g root -m 0644 deploy/mavlink-nmea-bridge.env.example \
   /etc/default/mavlink-nmea-bridge
+  
 sudo install -o root -g root -m 0644 deploy/mavlink-nmea-bridge.service \
   /etc/systemd/system/mavlink-nmea-bridge.service
 ```
