@@ -1,159 +1,129 @@
 # MAVLink to NMEA TCP Bridge
 
-A simple service for reading ArduPilot MAVLink GPS data from USB and broadcasting NMEA-0183 over TCP to a Rajant BreadCrumb. It emits `$GPGGA` and `$GPVTG` once per output interval. The TCP listener is intentionally without authorization and encryption, given that BreadCrumbs do not support authentication with  TCP/IP server.
+A simple server for use in converting MAVLink GPS data from an ArduPilot flight computer over serial and broadcasting ASCII NMEA-0183 over TCP. This server has been created with Rajant Breadcrumbs in mind, although other clients can use it as well. The TCP listener is intentionally left without authorization and encryption, since BreadCrumbs to not support authentication with a TCP/IP server. Ensure the server runs on an isolated network for security purposes.
 
-This service has been created to target a Raspberry Pi Compute Module 5 running Ubuntu Server; however, it should work on any modern Linux distribution granted the listed dependencies are installed.
+The server emits `$GPGGA` and `$GPVTG` once per output interval. For reference, `$GPGGA` serves GPS fix while `$GPVTG` serves direction and speed.
 
-## How it works
+The following guide targets a Rajant DX-5 combo board with a Raspberry Pi Compute Module 5 running Ubuntu Server; however, the server should should work on any modern Linux distribution as long as the listed dependencies are satisfied. The server was also testing on Fedora Linux 44 with no issues.
+## (Optional) Flashing RPi CM5 module with onboard storage
 
-`/dev/serial/by-id/...` (or `udpin:...`) -> MAVLink reader -> thread-safe GPS
-state and freshness policy -> NMEA formatter -> non-blocking multi-client TCP
-broadcaster.
+If the compute module 5 has not yet been flashed, proceed with the following steps to install Ubuntu Server LTS.
+### Power on RPi CM5 into boot mode
+When the board is oriented as shown in the image, press and hold the indicated button while
+powering on the unit connected to the CM5 using the USB port labeled “CM5” just beside the
+button connected to the host PC used for flashing.
 
-`GPS_RAW_INT` is the default source because it provides fix type, satellites,
-HDOP, GPS speed/course, and sometimes UTC. `GLOBAL_POSITION_INT` provides
-position, altitude, velocity, and heading; when it is selected, the latest
-`GPS_RAW_INT` fix metadata is retained when available. `time_boot_ms` is never
-treated as UTC. If GPS epoch time is unavailable, Linux system UTC is used and
-a warning is logged.
+![A Rajant DX-5 BreadCrumb combo board with an arrow pointing to the boot button.](images/boot_button.png)
 
-By default, data is valid through 2 seconds, stale through 5 seconds, and
-invalid after 5 seconds. Invalid output has no fix, blank coordinates, and
-empty VTG motion fields.
+### Flashing Process
+Follow the instructions on the official [RPIBOOT repository](https://github.com/raspberrypi/usbboot) to install the utility onto your system (Windows, macOS, Linux). Launch the application through the command line or start menu wait until instructed to close the window.
 
+Next, follow the instructions on the official [Raspberry Pi software page](https://www.raspberrypi.com/software/) to download and install Raspberry Pi Imager. 
+
+Select Raspberry Pi 5:
+
+![A screenshot of the Raspberry Pi Imager app on the device selection menu with an arrow pointing to the correct option for the Compute Module 5](images/imager_board.png)
+
+Select an operating system. For Ubuntu Server, scroll down until you see other general-purpose OS:
+
+![A screenshot of the Raspberry Pi Imager app on the OS selection menu with an arrow pointing to the correct option to select an other OS.](images/imager_os.png)
+
+During the setup process, be sure to enable SSH and configure network settings before flashing. You will need to connect to the device via SSH for the install process.
 ## Install
 
 Install all system packages needed to build Python dependencies, create virtual environments, run tests, and diagnose networking:
-``` shell
+```shell
 sudo apt update
-sudo apt install -y git ca-certificates python3 python3-venv python3-pip \
-  build-essential rsync netcat-openbsd iproute2 lsof
+
+sudo apt install -y git ca-certificates python3 python3-venv python3-pip build-essential rsync netcat-openbsd iproute2 lsof
 ```
 
-After cloning the repository, install it within an isolated environment:
-``` shell
-cd ~/mavlink-nmea-bridge
-python3 -m venv .venv
+Clone the repository and install it within an isolated environment:
+```shell
+git clone <REPLACE WITH: repository URL>
+cd /mavlink-nvmea-bridge
+
+python3 -m venv .venv # create virtual environment
 . .venv/bin/activate # activate virtual environment
 python -m pip install --upgrade pip
 python -m pip install -e '.[test]'
 ```
 
 Verify installation:
-``` shell
+```shell
 python -m pytest
 python -m mavlink_nmea_bridge --help
 ```
 
-Reactivate the environment in a new shell with `. .venv/bin/activate`.
+If restarted or a new session is created, you will need to reactivate the virtual environment before you can run the program again. Recall that you can activate it using 
+```shell
+. .venv/bin/activate # activate virtual environment
+```
 
 ## Connect and configure MAVLink
 
-Identify the USB serial device to use. Devices could change names if disconnected; therefore you should prefer the device path shown under `/dev/serial/by-id/` rather than `/dev/ttyACM0`:
-``` shell
-ls -l /dev/serial/by-id/ # use in production
-ls -l /dev/ttyACM* 2>/dev/null # only for testing
-sudo usermod -aG dialout "$USER"
-```
-Log out and back in after adding the group. Confirm the baud rate with the flight-controller documentation. MAVProxy, QGroundControl, and this bridge generally cannot all open the same serial device; use one owner and route MAVLink over UDP when sharing is needed.
+Identify the serial device of the flight computer. Since the device name can change after disconnected, always use the permanent device path under `/dev/serial/by-id` rather than `/dev/ttyACM0`. **Not following this instruction risks losing GPS fix during flight.**
 
-Some Ubuntu images have ModemManager installed. It can probe a flight controller and interrupt or hold the serial device. Disable it only if this machine does not need cellular modem management:
-``` shell
+Identify the path of your flight controller and take note of it (it is needed later):
+```shell
+ls -l /dev/serial/by-id/ # use in production (permanent path)
+ls -l /dev/ttyACM* 2>/dev/null # only for testing (temporary path)
+```
+
+To access a serial device, you will need to add your user to the `dialout` group. Add yourself to this group with:
+```shell
 sudo usermod -a -G dialout $USER
+```
+
+Log out and back in or restart after having added the group.
+
+By default, the Ubuntu Server image will likely come with ModemManager installed. To avoid serial conflicts, remove it:
+```shell
 sudo apt-get remove modemmanager -y
 sudo apt install libfuse2 -y
 sudo apt install libxcb-xinerama0 libxkbcommon-x11-0 libxcb-cursor-dev -y
 ```
 
-If ModemManager is needed for another device, keep it enabled and configure a udev exclusion for the flight controller instead.
+Provided in the repository root is an example config file. Copy it to `config.toml` and make changes as needed. You need to at least provide the path of your device identified earlier, the baud rate of the flight controller, and your preferred TCP port. Other network settings such as input and output rate can be configured from here as well.
 
-Create a configuration file and change the endpoint, baud rate, and network settings as required:
-``` shell
-cp config.example.toml config.toml
-${EDITOR:-vi} config.toml
-```
+## Configure breadcrumb
 
-Command-line options override values from `--config`. The file `deploy/mavlink-nmea-bridge.env.example` only sets `PYTHONUNBUFFERED`; it is not the application configuration file.
+Before proceeding, ensure your Rajant BreadCrumb is configured to listen to the server. Using BC|Commander, login to the BreadCrumb using your login credentials. Right click on the BreadCrumb from the BreadCrumb Table tab. Click on configure and you should be in the General tab by default. Scroll down until you see the 'External GPS' settings. Change the following settings as specified:
 
+- GPS Device -> TCP/IP
+- External GPS IP -> IP address of the Raspberry Pi (identify with `ip a` on Pi)
+- External GPS TCP port -> the port specified in the config file you created
+- Timeout before device is considered hung -> your preference (use 10000 for now)
 ## Run manually
 
-Use the configuration file:
+Before setting up as a service, make sure all settings are configured properly.
 
-```bash
+Use the configuration file:
+```shell
 python -m mavlink_nmea_bridge --config config.toml
 ```
 
 Or specify options directly:
-
-```bash
+```shell
 python -m mavlink_nmea_bridge \
   --mavlink-endpoint /dev/serial/by-id/<flight-controller> \
   --baud 115200 --position-source GPS_RAW_INT \
   --bind-address 0.0.0.0 --tcp-port 10110 --output-rate 1
 ```
 
-For a UDP source routed by MAVProxy:
-
-```bash
-mavproxy.py --master=/dev/serial/by-id/<flight-controller> --baudrate=115200 \
-  --out=udp:127.0.0.1:14550
-python -m mavlink_nmea_bridge \
-  --mavlink-endpoint udpin:0.0.0.0:14550 --tcp-port 10110
-```
-
-Inspect decoded state without starting the TCP listener:
-
-```bash
-python -m mavlink_nmea_bridge.inspect \
-  --mavlink-endpoint /dev/serial/by-id/<flight-controller> --baud 115200
-```
-
-## Test the TCP output
-
-Configure the BreadCrumb with:
-
-- External GPS IP: the Compute Module’s reachable IP address
-- External GPS TCP port: `10110`
-- Timeout: start with 10 seconds
-
-Check the listener and read local output:
-
-```bash
-ss -ltnp | grep ':10110'
-nc -v 127.0.0.1 10110
-```
-
-If UFW is active, allow only the BreadCrumb (replace the address and
-interface):
-
-```bash
-sudo ufw status
-sudo ufw allow from <breadcrumb-ip> to any port 10110 proto tcp
-```
-
-To test the BreadCrumb without a flight controller, stop the bridge if it is
-already using port 10110, then run:
-
-```bash
+If you don't have access to a flight controller yet:
+```shell
 python -m mavlink_nmea_bridge.synthetic \
   --latitude 40.1234567 --longitude -75.1234567 \
   --altitude 120.5 --tcp-port 10110
 ```
 
-Example sentences are:
+## Setup as a systemd service
 
-```text
-$GPGGA,123519.000,4807.0380,N,01131.0000,E,1,8,0.9,545.4,M,,M,,*7C
-$GPVTG,54.7,T,,M,5.50,N,10.18,K*6E
-```
+*Before proceeding, make sure you have read all instructions above!*
 
-## Run as a systemd service
-
-The supplied unit expects the application at `/opt/mavlink-nmea-bridge` and
-the configuration at `/etc/mavlink-nmea-bridge/config.toml`. From the
-repository root, install a restricted service account and copy the checkout:
-
-```bash
+The supplied unit expects the application at `/opt/mavlink-nmea-bridge` and the configuration at `/etc/mavlink-nmea-bridge/config.toml`. From the repository root, install a restricted service account and copy the checkout:
+```shell
 sudo useradd --system --home /opt/mavlink-nmea-bridge \
   --shell /usr/sbin/nologin mavlink-bridge
 
@@ -180,7 +150,7 @@ sudo install -d -o root -g mavlink-bridge -m 0750 \
 sudo install -o root -g mavlink-bridge -m 0640 config.example.toml \
   /etc/mavlink-nmea-bridge/config.toml
 
-sudoedit /etc/mavlink-nmea-bridge/config.toml
+sudo vim /etc/mavlink-nmea-bridge/config.toml
 
 sudo install -o root -g root -m 0644 deploy/mavlink-nmea-bridge.env.example \
   /etc/default/mavlink-nmea-bridge
@@ -189,47 +159,46 @@ sudo install -o root -g root -m 0644 deploy/mavlink-nmea-bridge.service \
   /etc/systemd/system/mavlink-nmea-bridge.service
 ```
 
-The `useradd` command is for a new installation. If the account already
-exists, use this instead:
-
-```bash
+The `useradd` command is for a new installation. If the account already exists, use this instead:
+```shell
 sudo usermod --home /opt/mavlink-nmea-bridge \
-  --shell /usr/sbin/nologin mavlink-bridge
+
+--shell /usr/sbin/nologin mavlink-bridge
 ```
 
-Edit the installed TOML file before starting the service. In particular, use
-the persistent `/dev/serial/by-id/...` endpoint when one is available.
+Edit the installed config file before starting the service. You can use the same settings you setup earlier.
 
 Enable it and inspect the first startup:
-
-```bash
+```shell
 sudo systemctl daemon-reload
+
 sudo systemctl enable --now mavlink-nmea-bridge
+
 sudo systemctl status mavlink-nmea-bridge
+
 sudo journalctl -u mavlink-nmea-bridge -f
 ```
 
-The unit waits for network readiness, restarts after failures, runs without
-root, and logs to journald. Common startup issues are a wrong serial endpoint,
-serial ownership by another process, missing `dialout` access, a heartbeat
-timeout, or TCP port 10110 already being in use.
+The unit waits for network readiness, restarts after failures, runs without root, and logs to journald. Common startup issues are a wrong serial endpoint, serial ownership by another process, missing `dialout` access, a heartbeat timeout, or TCP port 10110 already being in use.
 
-When updating an existing deployment, copy the new checkout, reinstall the
-package, review the configuration, and restart:
-
-```bash
+When updating an existing deployment, copy the new checkout, reinstall the package, review the configuration, and restart:
+```shell
 sudo rsync -a --exclude='.venv' --exclude='__pycache__' ./ \
-  /opt/mavlink-nmea-bridge/
-sudo chown -R mavlink-bridge:mavlink-bridge /opt/mavlink-nmea-bridge
-sudo -u mavlink-bridge /opt/mavlink-nmea-bridge/.venv/bin/python \
-  -m pip install /opt/mavlink-nmea-bridge
-sudo systemctl restart mavlink-nmea-bridge
-```
 
+/opt/mavlink-nmea-bridge/
+
+sudo chown -R mavlink-bridge:mavlink-bridge /opt/mavlink-nmea-bridge
+
+sudo -u mavlink-bridge /opt/mavlink-nmea-bridge/.venv/bin/python \
+
+-m pip install /opt/mavlink-nmea-bridge
+
+sudo systemctl restart mavlink-nmea-bridge
+
+```
 ## Development
 
 Run the test suite from an activated virtual environment:
-
 ```bash
 python -m pytest
 ```
