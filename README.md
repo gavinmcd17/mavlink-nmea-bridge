@@ -35,7 +35,8 @@ Install all system packages needed to build Python dependencies, create virtual 
 ```shell
 sudo apt update
 
-sudo apt install -y git ca-certificates python3 python3-venv python3-pip build-essential rsync netcat-openbsd iproute2 lsof
+sudo apt install -y git ca-certificates python3 python3-venv python3-pip \
+  build-essential rsync netcat-openbsd iproute2 lsof
 ```
 
 Clone the repository and install it within an isolated environment:
