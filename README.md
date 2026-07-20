@@ -1,13 +1,14 @@
 # MAVLink to NMEA TCP Bridge
 
-A simple server for use in converting MAVLink GPS data from an ArduPilot flight computer over serial and broadcasting ASCII NMEA-0183 over TCP. This server has been created with Rajant Breadcrumbs in mind, although other clients can use it as well. The TCP listener is intentionally left without authorization and encryption, since BreadCrumbs to not support authentication with a TCP/IP server. Ensure the server runs on an isolated network for security purposes.
+A simple server for use in converting MAVLink GPS data from an ArduPilot flight computer over serial and broadcasting ASCII NMEA-0183 over TCP. This server has been created with Rajant Breadcrumbs in mind, although other clients can use it as well. The TCP listener is intentionally left without authorization and encryption, since BreadCrumbs do not support authentication with a TCP/IP server. Ensure the server runs on an isolated network for security purposes.
 
-The server emits `$GPGGA` and `$GPVTG` once per output interval. For reference, `$GPGGA` serves GPS fix while `$GPVTG` serves direction and speed.
+The server emits `$GPGGA` and `$GPVTG` once per output interval. For reference, `$GPGGA` provides GPS-fix information, while `$GPVTG` provides direction and speed.
 
-The following guide targets a Rajant DX-5 combo board with a Raspberry Pi Compute Module 5 running Ubuntu Server; however, the server should should work on any modern Linux distribution as long as the listed dependencies are satisfied. The server was also testing on Fedora Linux 44 with no issues.
+The following guide targets a Rajant DX-5 combo board with a Raspberry Pi Compute Module 5 running Ubuntu Server; however, the server should work on any modern Linux distribution as long as the listed dependencies are satisfied. The server was also tested on Fedora Linux 44 with no issues.
+
 ## (Optional) Flashing RPi CM5 module with onboard storage
 
-If the compute module 5 has not yet been flashed, proceed with the following steps to install Ubuntu Server LTS.
+If the Compute Module 5 has not yet been flashed, proceed with the following steps to install Ubuntu Server LTS.
 ### Power on RPi CM5 into boot mode
 When the board is oriented as shown in the image, press and hold the indicated button while
 powering on the unit connected to the CM5 using the USB port labeled “CM5” just beside the
@@ -16,7 +17,7 @@ button connected to the host PC used for flashing.
 ![A Rajant DX-5 BreadCrumb combo board with an arrow pointing to the boot button.](images/boot_button.png)
 
 ### Flashing Process
-Follow the instructions on the official [RPIBOOT repository](https://github.com/raspberrypi/usbboot) to install the utility onto your system (Windows, macOS, Linux). Launch the application through the command line or start menu wait until instructed to close the window.
+Follow the instructions on the official [RPIBOOT repository](https://github.com/raspberrypi/usbboot) to install the utility onto your system (Windows, macOS, Linux). Launch the application through the command line or Start menu, then wait until instructed to close the window.
 
 Next, follow the instructions on the official [Raspberry Pi software page](https://www.raspberrypi.com/software/) to download and install Raspberry Pi Imager. 
 
@@ -24,11 +25,12 @@ Select Raspberry Pi 5:
 
 ![A screenshot of the Raspberry Pi Imager app on the device selection menu with an arrow pointing to the correct option for the Compute Module 5](images/imager_board.png)
 
-Select an operating system. For Ubuntu Server, scroll down until you see other general-purpose OS:
+Select an operating system. For Ubuntu Server, scroll down until you see other general-purpose operating systems:
 
-![A screenshot of the Raspberry Pi Imager app on the OS selection menu with an arrow pointing to the correct option to select an other OS.](images/imager_os.png)
+![A screenshot of the Raspberry Pi Imager app on the OS selection menu with an arrow pointing to the correct option to select another OS.](images/imager_os.png)
 
 During the setup process, be sure to enable SSH and configure network settings before flashing. You will need to connect to the device via SSH for the install process.
+
 ## Install
 
 Install all system packages needed to build Python dependencies, create virtual environments, run tests, and diagnose networking:
@@ -42,7 +44,7 @@ sudo apt install -y git ca-certificates python3 python3-venv python3-pip \
 Clone the repository and install it within an isolated environment:
 ```shell
 git clone <REPLACE WITH: repository URL>
-cd /mavlink-nvmea-bridge
+cd /mavlink-nmea-bridge
 
 python3 -m venv .venv # create virtual environment
 . .venv/bin/activate # activate virtual environment
@@ -56,14 +58,14 @@ python -m pytest
 python -m mavlink_nmea_bridge --help
 ```
 
-If restarted or a new session is created, you will need to reactivate the virtual environment before you can run the program again. Recall that you can activate it using 
+If the system restarts or you start a new session, you will need to reactivate the virtual environment before you can run the program again. Recall that you can activate it using
 ```shell
 . .venv/bin/activate # activate virtual environment
 ```
 
 ## Connect and configure MAVLink
 
-Identify the serial device of the flight computer. Since the device name can change after disconnected, always use the permanent device path under `/dev/serial/by-id` rather than `/dev/ttyACM0`. **Not following this instruction risks losing GPS fix during flight.**
+Identify the serial device of the flight computer. Since the device name can change after being disconnected, always use the permanent device path under `/dev/serial/by-id` rather than `/dev/ttyACM0`. **Not following this instruction risks losing GPS fix during flight.**
 
 Identify the path of your flight controller and take note of it (it is needed later):
 ```shell
@@ -85,16 +87,17 @@ sudo apt install libfuse2 -y
 sudo apt install libxcb-xinerama0 libxkbcommon-x11-0 libxcb-cursor-dev -y
 ```
 
-Provided in the repository root is an example config file. Copy it to `config.toml` and make changes as needed. You need to at least provide the path of your device identified earlier, the baud rate of the flight controller, and your preferred TCP port. Other network settings such as input and output rate can be configured from here as well.
+Provided in the repository root is an example config file. Copy it to `config.toml` and make changes as needed. At minimum, provide the path of your device identified earlier, the baud rate of the flight controller, and your preferred TCP port. Other network settings, such as input and output rate, can be configured there as well.
 
-## Configure breadcrumb
+## Configure BreadCrumb
 
-Before proceeding, ensure your Rajant BreadCrumb is configured to listen to the server. Using BC|Commander, login to the BreadCrumb using your login credentials. Right click on the BreadCrumb from the BreadCrumb Table tab. Click on configure and you should be in the General tab by default. Scroll down until you see the 'External GPS' settings. Change the following settings as specified:
+Before proceeding, ensure your Rajant BreadCrumb is configured to listen to the server. Using BC|Commander, log in to the BreadCrumb using your login credentials. Right-click the BreadCrumb from the BreadCrumb Table tab. Click Configure; you should be in the General tab by default. Scroll down until you see the 'External GPS' settings. Change the following settings as specified:
 
 - GPS Device -> TCP/IP
 - External GPS IP -> IP address of the Raspberry Pi (identify with `ip a` on Pi)
 - External GPS TCP port -> the port specified in the config file you created
 - Timeout before device is considered hung -> your preference (use 10000 for now)
+
 ## Run manually
 
 Before setting up as a service, make sure all settings are configured properly.
@@ -167,7 +170,7 @@ sudo usermod --home /opt/mavlink-nmea-bridge \
 --shell /usr/sbin/nologin mavlink-bridge
 ```
 
-Edit the installed config file before starting the service. You can use the same settings you setup earlier.
+Edit the installed config file before starting the service. You can use the same settings you set up earlier.
 
 Enable it and inspect the first startup:
 ```shell
@@ -197,6 +200,7 @@ sudo -u mavlink-bridge /opt/mavlink-nmea-bridge/.venv/bin/python \
 sudo systemctl restart mavlink-nmea-bridge
 
 ```
+
 ## Development
 
 Run the test suite from an activated virtual environment:
