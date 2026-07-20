@@ -8,6 +8,8 @@ The following guide targets a Rajant DX-5 combo board with a Raspberry Pi Comput
 
 ## (Optional) Flashing RPi CM5 module with onboard storage
 
+*Note: if an active cooling fan is connected, you will not be able to flash the image. Disconnect the fan, but leave the heatsink on!*
+
 If the Compute Module 5 has not yet been flashed, proceed with the following steps to install Ubuntu Server LTS.
 ### Power on RPi CM5 into boot mode
 When the board is oriented as shown in the image, press and hold the indicated button while
