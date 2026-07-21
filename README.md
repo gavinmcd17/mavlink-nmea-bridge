@@ -8,7 +8,7 @@ The following guide targets a Rajant DX-5 combo board with a Raspberry Pi Comput
 
 ## (Optional) Flashing RPi CM5 module with onboard storage
 
-*Note: if an active cooling fan is connected, you will not be able to flash the image. Disconnect the fan, but leave the heatsink on!*
+*Note: unless you supply additional power to the board, flashing the image with an active cooling fan connected will cause the Pi to not be supplied with enough power! Disconnect any active cooling fan and any other accessories that require power before proceeding with the flashing process.*
 
 If the Compute Module 5 has not yet been flashed, proceed with the following steps to install Ubuntu Server LTS.
 ### Power on RPi CM5 into boot mode
@@ -33,7 +33,44 @@ Select an operating system. For Ubuntu Server, scroll down until you see other g
 
 During the setup process, be sure to enable SSH and configure network settings before flashing. You will need to connect to the device via SSH for the install process.
 
+## Setup Static IP
+
+Since Rajant BreadCrumbs typcically exist on 10.x.x.x IP address range, the CM5 needs to be configured to use a static 10.x.x.x IP.
+
+Identify the network interface to be used:
+```shell
+ip link # you will likely need to use eth0
+```
+
+Locate and edit Netplan configuration:
+```shell
+ls /etc/netplan
+
+sudo vim /etc/netplan/<REPLACE WITH: config file name>
+```
+
+Modify accordingly:
+```yaml
+network:
+  version: 2
+  ethernets:
+    eth0:
+      optional: true
+      dhcp4: true # leave enabled until you've downloaded all dependencies
+      addresses:
+        - 10.0.0.123/8 # user preference
+```
+
+Then apply:
+```shell
+sudo netplan apply
+```
+
+Now you should be able SSH into the PI with your newly created static IP from any device on the BreadCrumb network.
+
 ## Install
+
+If you're currently on an isolated network, you will need to temporarily connect the Pi to the greater internet for the next section.
 
 Install all system packages needed to build Python dependencies, create virtual environments, run tests, and diagnose networking:
 ```shell
@@ -65,6 +102,11 @@ If the system restarts or you start a new session, you will need to reactivate t
 . .venv/bin/activate # activate virtual environment
 ```
 
+To make getting back into the virtual environment easier, you can create an alias.
+```shell
+alias activate='. ./venv/bin/activate'
+```
+
 ## Connect and configure MAVLink
 
 Identify the serial device of the flight computer. Since the device name can change after being disconnected, always use the permanent device path under `/dev/serial/by-id` rather than `/dev/ttyACM0`. **Not following this instruction risks losing GPS fix during flight.**
@@ -74,6 +116,7 @@ Identify the path of your flight controller and take note of it (it is needed la
 ls -l /dev/serial/by-id/ # use in production (permanent path)
 ls -l /dev/ttyACM* 2>/dev/null # only for testing (temporary path)
 ```
+You will likely see two serial connections for the flight computer. Use the first by default; if that one does not work, try the other.
 
 To access a serial device, you will need to add your user to the `dialout` group. Add yourself to this group with:
 ```shell
@@ -89,7 +132,10 @@ sudo apt install libfuse2 -y
 sudo apt install libxcb-xinerama0 libxkbcommon-x11-0 libxcb-cursor-dev -y
 ```
 
-Provided in the repository root is an example config file. Copy it to `config.toml` and make changes as needed. At minimum, provide the path of your device identified earlier, the baud rate of the flight controller, and your preferred TCP port. Other network settings, such as input and output rate, can be configured there as well.
+Provided in the repository root is an example config file. Rename it to `config.toml` and make changes as needed. At minimum, provide the path of your device identified earlier, the baud rate of the flight controller, and your preferred TCP port. Other network settings, such as input and output rate, can be configured there as well.
+```shell
+mv config.example.toml config.toml # rename to use
+```
 
 ## Configure BreadCrumb
 
@@ -156,7 +202,7 @@ sudo install -d -o root -g mavlink-bridge -m 0750 \
 sudo install -o root -g mavlink-bridge -m 0640 config.example.toml \
   /etc/mavlink-nmea-bridge/config.toml
 
-sudo vim /etc/mavlink-nmea-bridge/config.toml
+sudo cp config.toml /etc/mavlink-nmea-bridge/config.toml # while in folder where your original config.toml is
 
 sudo install -o root -g root -m 0644 deploy/mavlink-nmea-bridge.env.example \
   /etc/default/mavlink-nmea-bridge
@@ -168,8 +214,7 @@ sudo install -o root -g root -m 0644 deploy/mavlink-nmea-bridge.service \
 The `useradd` command is for a new installation. If the account already exists, use this instead:
 ```shell
 sudo usermod --home /opt/mavlink-nmea-bridge \
-
---shell /usr/sbin/nologin mavlink-bridge
+  --shell /usr/sbin/nologin mavlink-bridge
 ```
 
 Edit the installed config file before starting the service. You can use the same settings you set up earlier.
@@ -190,14 +235,12 @@ The unit waits for network readiness, restarts after failures, runs without root
 When updating an existing deployment, copy the new checkout, reinstall the package, review the configuration, and restart:
 ```shell
 sudo rsync -a --exclude='.venv' --exclude='__pycache__' ./ \
-
-/opt/mavlink-nmea-bridge/
+  /opt/mavlink-nmea-bridge/
 
 sudo chown -R mavlink-bridge:mavlink-bridge /opt/mavlink-nmea-bridge
 
 sudo -u mavlink-bridge /opt/mavlink-nmea-bridge/.venv/bin/python \
-
--m pip install /opt/mavlink-nmea-bridge
+  -m pip install /opt/mavlink-nmea-bridge
 
 sudo systemctl restart mavlink-nmea-bridge
 
