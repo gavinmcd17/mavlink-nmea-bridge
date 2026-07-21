@@ -1,12 +1,12 @@
 # Adjust as needed & rename to 'config.toml'. Leave at project root.
-mavlink_endpoint = "/dev/ttyACM0" # use /dev/serial/by-id/<REPLACE: device name> if possible
-baud = 115200
-position_source = "GPS_RAW_INT"
-bind_address = "0.0.0.0"
-tcp_port = 10110
-output_rate = 1.0
-message_rate = 5.0
-valid_age = 2.0
-stale_age = 5.0
-invalid_age = 5.0
-log_level = "INFO"
+mavlink_endpoint = "/dev/ttyACM0" # MAVLink serial device; use /dev/serial/by-id/<REPLACE: device name> if possible
+baud = 115200 # Serial baud rate; must match the flight controller's MAVLink port setting
+position_source = "GPS_RAW_INT" # MAVLink GPS message to use; choose GPS_RAW_INT or GLOBAL_POSITION_INT
+bind_address = "0.0.0.0" # TCP interface to listen on; use 127.0.0.1 to allow only local clients
+tcp_port = 10110 # TCP port on which NMEA clients connect
+output_rate = 1.0 # NMEA sentence broadcast frequency in Hz
+message_rate = 5.0 # GPS update frequency requested from the flight controller in Hz
+valid_age = 2.0 # Seconds a GPS update remains current before it is marked stale
+stale_age = 5.0 # Seconds a stale GPS update may still be output before it is marked invalid
+invalid_age = 5.0 # Upper limit for stale_age in seconds; must be greater than valid_age
+log_level = "INFO" # Minimum logging verbosity; use DEBUG for troubleshooting or WARNING to reduce output
