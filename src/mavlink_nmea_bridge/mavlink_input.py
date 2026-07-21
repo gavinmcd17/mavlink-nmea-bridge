@@ -87,7 +87,7 @@ class MAVLinkReader:
         fix_type = int(getattr(msg, "fix_type", 0) or 0)
         satellites = _number(getattr(msg, "satellites_visible", None), unknown=(UNKNOWN_U16,))
         eph = _number(getattr(msg, "eph", None), unknown=UNKNOWN_GPS_EPH)
-        LOG.info(
+        LOG.debug(
             "GPS_RAW_INT received: lat=%s lon=%s fix_type=%s satellites=%s hdop=%s",
             None if lat is None else lat / 1e7,
             None if lon is None else lon / 1e7,
@@ -124,7 +124,7 @@ class MAVLinkReader:
     def _handle_global(self, msg: Any) -> None:
         lat, lon = _number(msg.lat, unknown=(UNKNOWN_I32,)), _number(msg.lon, unknown=(UNKNOWN_I32,))
         vx, vy = _number(msg.vx, unknown=(UNKNOWN_I32,)), _number(msg.vy, unknown=(UNKNOWN_I32,))
-        LOG.info(
+        LOG.debug(
             "GLOBAL_POSITION_INT received: lat=%s lon=%s alt_mm=%s vx=%s vy=%s heading_cdeg=%s",
             None if lat is None else lat / 1e7,
             None if lon is None else lon / 1e7,
