@@ -109,7 +109,7 @@ alias activate='. ./venv/bin/activate'
 
 ## Connect and configure MAVLink
 
-Identify the serial device of the flight computer. Since the device name can change after being disconnected, always use the permanent device path under `/dev/serial/by-id` rather than `/dev/ttyACM0`. **Not following this instruction risks losing GPS fix during flight.**
+Identify the serial device of the flight computer. Since the device name can change after being disconnected, always use the permanent device path under `/dev/serial/by-id` rather than `/dev/ttyACM0`. **Using a non-permanent path risks losing GPS fix until next restart. You may lose GPS fix for the duration of your flight!**
 
 Identify the path of your flight controller and take note of it (it is needed later):
 ```shell
