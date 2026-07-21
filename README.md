@@ -24,7 +24,7 @@ Connect a USB-C cable to the computer you want to flash the image from. Orient t
 press and hold the circled button. Plug the cable into the USB-C port directly beside of the button, and you should 
 see the device connect into boot mode. You can now release the button and proceed.
 
-![A Rajant DX-5 BreadCrumb combo board with an arrow pointing to the boot button.](images/boot_reference.jpeg)
+<img src="images/boot_reference.jpeg" alt="A Rajant DX-5 BreadCrumb combo board with an arrow pointing to the boot button." width="360">
 
 ### Flashing Process
 Follow the instructions on the official [RPIBOOT repository](https://github.com/raspberrypi/usbboot) to install the utility onto your system (Windows, 
@@ -36,13 +36,11 @@ Imager.
 
 Select Raspberry Pi 5:
 
-![A screenshot of the Raspberry Pi Imager app on the device selection menu with an arrow pointing to the correct option 
-for the Compute Module 5](images/imager_board.png)
+<img src="images/imager_board.png" alt="A screenshot of the Raspberry Pi Imager app on the device selection menu with an arrow pointing to the correct option for the Compute Module 5." width="650">
 
 Select an operating system. For Ubuntu Server, scroll down until you see other general-purpose operating systems:
 
-![A screenshot of the Raspberry Pi Imager app on the OS selection menu with an arrow pointing to the correct option to 
-select another OS.](images/imager_os.png)
+<img src="images/imager_os.png" alt="A screenshot of the Raspberry Pi Imager app on the OS selection menu with an arrow pointing to the correct option to select another OS." width="650">
 
 During the setup process, ensure you enable SSH so you can use it during the installation process.
 
