@@ -1,5 +1,5 @@
 # Adjust as needed & rename to 'config.toml'. Leave at project root.
-mavlink_endpoint = "/dev/ttyACM0" # use /dev/serial/by-id if possible
+mavlink_endpoint = "/dev/ttyACM0" # use /dev/serial/by-id/<REPLACE: device name> if possible
 baud = 115200
 position_source = "GPS_RAW_INT"
 bind_address = "0.0.0.0"

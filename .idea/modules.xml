@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/mavlink-nmea-bridge.iml" filepath="$PROJECT_DIR$/.idea/mavlink-nmea-bridge.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/mavlink-nmea-bridge@1.iml" filepath="$PROJECT_DIR$/.idea/mavlink-nmea-bridge@1.iml" />
     </modules>
   </component>
 </project>
