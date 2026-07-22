@@ -1,8 +1,8 @@
 # MAVLink to NMEA TCP Bridge
 
-A simple server for use in converting MAVLink GPS data from an ArduPilot flight computer over serial and broadcasting 
-ASCII NMEA-0183 over TCP. This server has been created with Rajant Breadcrumbs in mind, although other clients can use 
-it as well. The TCP listener is intentionally left without authorization and encryption, since BreadCrumbs do not 
+A simple server that converts GPS data from a MAVLink flight computer over serial into NMEA‑0183 sentences and
+broadcasts them to TCP clients. This server has been created with Rajant Breadcrumbs in mind, although other clients can
+use it as well. The TCP listener is intentionally left without authorization and encryption, since BreadCrumbs do not
 support authentication with a TCP/IP server. Ensure the server runs on an isolated network for security purposes.
 
 The server emits `$GPGGA` and `$GPVTG` once per output interval. For reference, `$GPGGA` provides GPS-fix information, 
@@ -27,9 +27,10 @@ see the device connect into boot mode. You can now release the button and procee
 <img src="images/boot_reference.jpeg" alt="A Rajant DX-5 BreadCrumb combo board with an arrow pointing to the boot button." width="360">
 
 ### Flashing Process
-Follow the instructions on the official [RPIBOOT repository](https://github.com/raspberrypi/usbboot) to install the utility onto your system (Windows, 
-macOS, Linux). Launch the application through the command line or Start menu, then wait until instructed to close the 
-window.
+Follow the instructions on the [RPIBOOT repository](https://github.com/raspberrypi/usbboot) to install the utility onto your system (Windows,
+macOS, or Linux). Launch the application through the command line on linux with `rpiboot` or Start Menu on Windows, then
+wait until boot mode is activated. If you do not see the Pi reconnect after entering into boot mode, you may not be
+supplying the board with enough power. Disconnect any accessories and/ or try a different USB-C cable.
 
 Next, follow the instructions on the official [Raspberry Pi software page](https://www.raspberrypi.com/software/) to download and install Raspberry Pi 
 Imager. 
@@ -75,6 +76,8 @@ network:
 
 Then apply:
 ```shell
+sudo netplan try
+
 sudo netplan apply
 ```
 
@@ -116,10 +119,14 @@ run the program again. Recall that you can activate it using
 . .venv/bin/activate # activate virtual environment
 ```
 
-To make getting back into the virtual environment easier, you can create an alias.
+To make reactivating the virtual environment easier, add a persistent alias to your Bash configuration. From the
+repository root, run:
 ```shell
-alias activate='. ./venv/bin/activate'
+printf "alias activate='. \"%s/.venv/bin/activate\"'\n" "$PWD" >> ~/.bashrc
+source ~/.bashrc
 ```
+
+You can then run `activate` from any directory after logging in or restarting.
 
 ## Connect and configure MAVLink
 
@@ -140,13 +147,12 @@ To access a serial device, you will need to add your user to the `dialout` group
 sudo usermod -a -G dialout $USER
 ```
 
-Log out and back in or restart after having added the group.
+Log out and back in or restart after having added the group. You will need to activate the virtual environment again
+before proceeding.
 
 By default, the Ubuntu Server image will likely come with ModemManager installed. To avoid serial conflicts, remove it:
 ```shell
 sudo apt-get remove modemmanager -y
-sudo apt install libfuse2 -y
-sudo apt install libxcb-xinerama0 libxkbcommon-x11-0 libxcb-cursor-dev -y
 ```
 
 Provided in the repository root is an example config file. Rename it to `config.toml` and make changes as needed. At 
@@ -218,9 +224,7 @@ sudo -u mavlink-bridge /opt/mavlink-nmea-bridge/.venv/bin/python -m pip install 
 
 sudo install -d -o root -g mavlink-bridge -m 0750 /etc/mavlink-nmea-bridge
 
-sudo install -o root -g mavlink-bridge -m 0640 config.example.toml /etc/mavlink-nmea-bridge/config.toml
-
-sudo cp ~/mavlink-nmea-bridge/config.toml /etc/mavlink-nmea-bridge/config.toml
+sudo install -o root -g mavlink-bridge -m 0640 config.toml /etc/mavlink-nmea-bridge/config.toml
 
 sudo install -o root -g root -m 0644 deploy/mavlink-nmea-bridge.env.example /etc/default/mavlink-nmea-bridge
   
