@@ -12,21 +12,22 @@ The following guide targets a Rajant DX-5 combo board with a Raspberry Pi Comput
 however, the server should work on any modern Linux distribution as long as the listed dependencies are satisfied. 
 The server was also tested on Fedora Linux 44 with no issues.
 
-## (Optional) Flashing RPi CM5 module with onboard storage
+## Setup Compute Module 5 (Optional)
+### Flashing RPi CM5 module with onboard storage
 
 *Note: unless you supply additional power to the board, flashing the image with an active cooling fan connected will 
 cause the Pi to not be supplied with enough power! Disconnect any active cooling fan and any other accessories that 
 require power before proceeding with the flashing process.*
 
 If the Compute Module 5 has not yet been flashed, proceed with the following steps to install Ubuntu Server LTS.
-### Power on RPi CM5 into boot mode
+#### Power on RPi CM5 into boot mode
 Connect a USB-C cable to the computer you want to flash the image from. Orient the DX-5 as shown in the image, then 
 press and hold the circled button. Plug the cable into the USB-C port directly beside of the button, and you should 
 see the device connect into boot mode. You can now release the button and proceed.
 
 <img src="images/boot_reference.jpeg" alt="A Rajant DX-5 BreadCrumb combo board with an arrow pointing to the boot button." width="360">
 
-### Flashing Process
+#### Flashing Process
 Follow the instructions on the [RPIBOOT repository](https://github.com/raspberrypi/usbboot) to install the utility onto your system (Windows,
 macOS, or Linux). Launch the application through the command line on linux with `rpiboot` or Start Menu on Windows, then
 wait until boot mode is activated. If you do not see the Pi reconnect after entering into boot mode, you may not be
@@ -45,7 +46,7 @@ Select an operating system. For Ubuntu Server, scroll down until you see other g
 
 During the setup process, ensure you enable SSH so you can use it during the installation process.
 
-## Setup Static IP
+### Setup Static IP
 
 Since BreadCrumbs typically exist on 10.x.x.x IP address range, the CM5 needs to be configured to use a static 
 10.x.x.x IP.
@@ -136,8 +137,7 @@ losing GPS fix until next restart. You may lose GPS fix for the duration of your
 
 Identify the path of your flight controller and take note of it (it is needed later):
 ```shell
-ls -l /dev/serial/by-id/ # use in production (permanent path)
-ls -l /dev/ttyACM* 2>/dev/null # only for testing (temporary path)
+ls -l /dev/serial/by-id/
 ```
 You will likely see two serial connections for the flight computer. Use the first by default; if that one does not work, 
 try the other.
